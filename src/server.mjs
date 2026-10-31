@@ -19,16 +19,12 @@ import { quote, corridorList } from './quote.mjs';
 
 const PORT = Number(process.env.PORT || 4021);
 const NETWORK = process.env.X402_NETWORK || 'eip155:42220';
-const PAY_TO = process.env.PAY_TO;
+const PAY_TO = process.env.PAY_TO || '0x7B9C27d5e826c5a2aAe95431396ceE6Bbc143C1D';
 const API_KEY = process.env.X402_API_KEY;
 const PRICE = process.env.PRICE || '2000'; // 0.002 USA₮ at 6 decimals
 const PUBLIC_URL = process.env.PUBLIC_URL || `http://localhost:${PORT}`;
 const ASSET_SYMBOL = process.env.ASSET_SYMBOL || 'USA₮';
 
-if (!PAY_TO) {
-  console.error('PAY_TO is not set. Copy .env.example to .env and set your address.');
-  process.exit(1);
-}
 
 // Discover the token once at boot. The facilitator is the source of truth for
 // address, decimals and signing domain — hardcoding them is how sellers get

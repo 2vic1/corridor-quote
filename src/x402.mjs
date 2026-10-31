@@ -146,23 +146,22 @@ export async function supportedAssets(network, apiKey) {
  * facilitator upgrade does not break the seller.
  */
 export function findAsset(supported, network, symbol) {
-  const kinds =
-    supported?.kinds ||
-    supported?.supported?.[network] ||
-    supported?.supported ||
-    [];
-  const list = Array.isArray(kinds) ? kinds : Object.values(kinds).flat();
-  const match = list.find(
-    (k) =>
-      String(k.symbol || k.assetSymbol || '').toUpperCase() === symbol.toUpperCase() &&
-      (!k.network || k.network === network),
-  );
-  if (!match) return null;
-  return {
-    address: match.asset || match.address || match.token,
-    decimals: match.decimals ?? 6,
-    name: match.extra?.name || match.name || symbol,
-    version: match.extra?.version || match.version || '1',
-    raw: match,
-  };
+  const want = symbol.toUpperCase().replace(/[^A-Z]/g, ''); // USA₮ -> USA
+  const kinds = supported?.kinds || [];
+  for (const kind of kinds) {
+    if (kind.network !== network) continue;
+    const list = kind?.extra?.supportedAssets || [];
+    for (const a of list) {
+      const sym = String(a.symbol || '').toUpperCase().replace(/[^A-Z]/g, '');
+      if (sym !== want && sym !== want + 'T' && sym !== want + 'U') continue;
+      return {
+        address: a.asset,
+        decimals: a.decimals ?? 6,
+        name: a.name || a.symbol,
+        version: a.version || '1',
+        raw: a,
+      };
+    }
+  }
+  return null;
 }

@@ -11,6 +11,7 @@
     "demo": "node src/demo.mjs"
   },
   "dependencies": {
+    "@celo/attribution-tags": "^0.5.0",
     "viem": "^2.21.0"
   }
 }
