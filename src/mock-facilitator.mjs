@@ -67,7 +67,7 @@ const server = createServer(async (req, res) => {
     if (!auth || !sig) return json(res, 200, { isValid: false, invalidReason: 'malformed payload' });
     if (auth.to?.toLowerCase() !== paymentRequirements.payTo?.toLowerCase())
       return json(res, 200, { isValid: false, invalidReason: 'payTo mismatch' });
-    if (BigInt(auth.value) < BigInt(paymentRequirements.maxAmountRequired))
+    if (BigInt(auth.value) < BigInt(paymentRequirements.amount))
       return json(res, 200, { isValid: false, invalidReason: 'amount too low' });
     if (BigInt(auth.validBefore) < BigInt(Math.floor(Date.now() / 1000)))
       return json(res, 200, { isValid: false, invalidReason: 'expired' });

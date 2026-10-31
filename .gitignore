@@ -1,3 +1,5 @@
 node_modules/
 .env
 *.log
+x402-key.json
+merchant-wallet.json

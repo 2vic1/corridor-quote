@@ -8,10 +8,12 @@
     "server": "node src/server.mjs",
     "buyer": "node src/buyer.mjs",
     "mock": "node src/mock-facilitator.mjs",
-    "demo": "node src/demo.mjs"
+    "demo": "node src/demo.mjs",
+    "start": "node src/server.mjs"
   },
   "dependencies": {
     "@celo/attribution-tags": "^0.5.0",
+    "@x402/core": "^2.29.0",
     "viem": "^2.21.0"
   }
 }

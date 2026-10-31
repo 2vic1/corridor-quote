@@ -37,29 +37,32 @@ export function paymentRequirements({
   asset,
   payTo,
   amount,
-  resource,
-  description,
-  mimeType = 'application/json',
   maxTimeoutSeconds = 60,
   extra = {},
 }) {
+  // x402 v2 renamed `maxAmountRequired` -> `amount` and moved resource
+  // metadata out of the requirements into the 402 body's `resource` object.
   return {
     scheme: 'exact',
     network,
-    maxAmountRequired: String(amount),
-    resource,
-    description,
-    mimeType,
+    asset,
+    amount: String(amount),
     payTo,
     maxTimeoutSeconds,
-    asset,
     extra,
   };
 }
 
 /** The 402 body a seller returns when the resource has not been paid for. */
-export function paymentRequiredBody(accepts, error = 'X-PAYMENT header is required') {
-  return { x402Version: 2, error, accepts };
+export function paymentRequiredBody(accepts, resource, error = 'X-PAYMENT header is required') {
+  return {
+    x402Version: 2,
+    error,
+    resource: typeof resource === 'string'
+      ? { url: resource, mimeType: 'application/json' }
+      : resource,
+    accepts,
+  };
 }
 
 async function facilitatorPost(network, path, body, apiKey) {

@@ -1,0 +1,32 @@
+{
+  "url": "https://corridor-quote.apps.workbuddy.host/api/quote?sharecode=QJB5SHSDQ3&from=ARS&to=BRL&amount=1000",
+  "status": 200,
+  "receipt": {
+    "success": true,
+    "transaction": "0x5ee9646af79c56cab0a93c906975cffcec52172ec15f7fc446904fd38609ed12",
+    "network": "eip155:42220",
+    "payer": "0x7B9C27d5e826c5a2aAe95431396ceE6Bbc143C1D"
+  },
+  "body": {
+    "id": "6e0bf1fe7677735a50",
+    "from": "ARS",
+    "to": "BRL",
+    "amountIn": 1000,
+    "amountOut": 4.57,
+    "rate": 0.00457255,
+    "spreadBps": 45,
+    "legs": 2,
+    "issuedAt": "2026-10-31T21:40:13.539Z",
+    "expiresInSeconds": 30,
+    "source": "reference-table/v1",
+    "receipt": "9eba5160601c0bdd4975efaea333fb8b",
+    "paidWith": {
+      "asset": "USA₮",
+      "amount": "2000",
+      "decimals": 6,
+      "network": "eip155:42220",
+      "transaction": "0x5ee9646af79c56cab0a93c906975cffcec52172ec15f7fc446904fd38609ed12",
+      "payer": "0x7B9C27d5e826c5a2aAe95431396ceE6Bbc143C1D"
+    }
+  }
+}

@@ -98,8 +98,44 @@ The seller calls the facilitator's `/supported` at boot and takes the token addr
 - [x] asset discovery from `/supported`
 - [x] idempotency key on settle, refund path on unpriceable request
 - [x] offline demo that a judge can re-run in one command
-- [ ] mainnet deployment + on-chain settlement history
+- [x] **mainnet deployment + real on-chain settlement history**
 - [ ] live rate feed behind `quote.mjs` (same interface, swap `source`)
+
+### Live on Celo mainnet
+
+| | |
+|---|---|
+| Live app | `https://corridor-quote.apps.workbuddy.host/?sharecode=QJB5SHSDQ3` |
+| Merchant (receives USA₮) | `0xF0f70f52a9F8D5a717EA3280dB501B657CD5b0f3` |
+| Payer (the agent) | `0x7B9C27d5e826c5a2aAe95431396ceE6Bbc143C1D` |
+| ERC-8004 agent identity | `agentId 10011` |
+| Attribution tag | `celo_73adba80892e` |
+
+Real settlements, 0.002 USA₮ each, gas sponsored by the facilitator:
+
+| transaction | block | what it proves |
+|---|---|---|
+| [`0xff2333d7…7edbc`](https://celoscan.io/tx/0xff2333d76f2c3f46f430fbb78565a7b5e2d7c89caa5275b6ca5cde9c7178edbc) | 81581921 | first end-to-end paid call, local seller |
+| [`0x5ee9646a…9ed12`](https://celoscan.io/tx/0x5ee9646af79c56cab0a93c906975cffcec52172ec15f7fc446904fd38609ed12) | — | same call against the **deployed** seller |
+
+The agent also acquired its USA₮ on-chain (CELO → USDT → USA₮ through Uniswap v3,
+`src/swap-usat.mjs`), and registered its ERC-8004 identity — every transaction
+carries the attribution tag in calldata.
+
+## Notes for anyone re-running this
+
+* The hosted link is behind a `?sharecode=` gate — the preview proxy requires it on
+  **every** request, including `/api/quote`. Append it, or run the seller locally.
+* x402 v2 renamed `maxAmountRequired` → `amount` and moved resource metadata into the
+  402 body's `resource` object; the payment payload carries the requirements it is
+  satisfying under `accepted`. The facilitator rejects v1-shaped payloads with
+  `unsupported_scheme` / `invalid_format` — `src/x402.mjs` implements v2.
+* `/settle` needs `X-API-Key`; `/verify` and `/supported` do not.
+* The facilitator refuses a settlement where payer == recipient (`self_payment_rejected`),
+  so `PAY_TO` must be a different address from the buyer's wallet.
+* A key can be minted without the dashboard: `GET /api/keys/nonce` → sign
+  `"x402.celo.org wants you to create an x402 API key.\n\nAddress: …\nNonce: …\n\n…"`
+  → `POST /api/keys {address, nonce, signature}`. See `src/get-key.mjs`.
 
 ## Next
 

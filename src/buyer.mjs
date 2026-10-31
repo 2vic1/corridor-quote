@@ -46,10 +46,10 @@ export async function buy(url) {
   // A real agent shops: cheapest acceptable route wins.
   const terms = accepts
     .filter((a) => a.scheme === 'exact')
-    .sort((a, b) => Number(a.maxAmountRequired) - Number(b.maxAmountRequired))[0];
+    .sort((a, b) => Number(a.amount) - Number(b.amount))[0];
   if (!terms) throw new Error('no exact-scheme route offered');
 
-  console.log(`  price: ${terms.maxAmountRequired} of ${terms.asset} on ${terms.network}`);
+  console.log(`  price: ${terms.amount} of ${terms.asset} on ${terms.network}`);
 
   // ---- sign --------------------------------------------------------------
   const chainId = Number(terms.network.split(':')[1]);
@@ -64,7 +64,7 @@ export async function buy(url) {
   const authorization = {
     from: account.address,
     to: terms.payTo,
-    value: String(terms.maxAmountRequired),
+    value: String(terms.amount),
     validAfter: String(now - 60),
     validBefore: String(now + (terms.maxTimeoutSeconds || 60)),
     nonce: `0x${randomBytes(32).toString('hex')}`,
@@ -92,10 +92,12 @@ export async function buy(url) {
     message: authorization,
   });
 
+  // x402 v2: the payload carries the requirements it is satisfying under
+  // `accepted`; `scheme`/`network` are no longer top-level fields.
   const paymentPayload = {
     x402Version: 2,
-    scheme: 'exact',
-    network: terms.network,
+    resource: challenge.resource || { url, mimeType: 'application/json' },
+    accepted: terms,
     payload: { signature, authorization },
   };
 

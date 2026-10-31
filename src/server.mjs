@@ -3,6 +3,7 @@
 // No framework, no build step, one dependency for the buyer only — a judge can
 // `node src/server.mjs` and read every line that touches money.
 
+import './env.mjs'; // must run before any process.env read
 import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import {
@@ -63,8 +64,49 @@ function send(res, status, body, headers = {}) {
   res.end(payload);
 }
 
+// The hosting sandbox terminates TLS on a public host and forwards with its own
+// internal Host header, so a request-derived URL would leak the sandbox address.
+const PUBLIC_BASE = process.env.PUBLIC_BASE || 'https://corridor-quote.apps.workbuddy.host';
+const INTERNAL = /(sandbox|e2b|cloudstudio|localhost|127\.0\.0\.1)/i;
+
+const baseUrl = (req) => {
+  const host = req.headers['x-forwarded-host'] || req.headers.host || '';
+  const proto = req.headers['x-forwarded-proto'] || 'http';
+  if (!host || INTERNAL.test(host)) return PUBLIC_BASE;
+  return `${proto}://${host}`;
+};
+
+const LANDING = (origin, q) => `<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>CorridorQuote</title>
+<style>
+:root{color-scheme:dark}
+body{margin:0;background:#0b1220;color:#e8eefc;font:15px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace}
+main{max-width:760px;margin:0 auto;padding:64px 24px}
+h1{font-size:34px;margin:0 0 8px;letter-spacing:-.02em}
+p.sub{color:#7f8ea8;margin:0 0 36px}
+a{color:#9fe870}
+.card{border:1px solid #1e2a3d;border-radius:10px;padding:18px 20px;margin:0 0 14px;background:#0f1828}
+code{color:#c8d4e8}
+.k{color:#7f8ea8}
+</style></head><body><main>
+<h1>CorridorQuote</h1>
+<p class="sub">A price is worth a fraction of a cent. So it should cost one.</p>
+<div class="card"><span class="k">GET</span> <a href="${origin}/api/quote?from=ARS&to=BRL&amount=250000${q}">/api/quote?from=ARS&amp;to=BRL&amp;amount=250000</a><br>
+<span class="k">returns</span> <code>402 Payment Required</code> with the price in USA&#8366; — then the quote, once paid.</div>
+<div class="card"><span class="k">GET</span> <a href="${origin}/corridors${q}">/corridors</a> <span class="k">— the corridors on offer</span></div>
+<div class="card"><span class="k">GET</span> <a href="${origin}/health${q}">/health</a> <span class="k">— network, asset, price</span></div>
+<p class="sub" style="margin-top:28px">Settled in USA&#8366; over x402 on Celo mainnet · agent identity ERC-8004 #10011</p>
+</main></body></html>`;
+
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, PUBLIC_URL);
+  const origin = baseUrl(req);
+
+  if (url.pathname === '/') {
+    const sc = url.searchParams.get('sharecode');
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    return res.end(LANDING(origin, sc ? `?sharecode=${sc}` : ''));
+  }
 
   if (url.pathname === '/health') {
     return send(res, 200, { ok: true, network: NETWORK, asset: ASSET?.address, price: PRICE });
@@ -81,23 +123,28 @@ const server = createServer(async (req, res) => {
   const from = (url.searchParams.get('from') || '').toUpperCase();
   const to = (url.searchParams.get('to') || '').toUpperCase();
   const amount = Number(url.searchParams.get('amount') || 0);
-  const resource = `${PUBLIC_URL}/api/quote?from=${from}&to=${to}&amount=${amount}`;
+  const resource = `${origin}/api/quote?from=${from}&to=${to}&amount=${amount}`;
 
   const requirements = paymentRequirements({
     network: NETWORK,
     asset: ASSET.address,
     payTo: PAY_TO,
     amount: PRICE,
-    resource,
-    description: `FX quote ${from}->${to} for ${amount}`,
     extra: { name: ASSET.name, version: ASSET.version },
   });
+
+  // x402 v2 keeps resource metadata on the 402 body, not on each requirement.
+  const resourceInfo = {
+    url: resource,
+    description: `FX quote ${from}->${to} for ${amount}`,
+    mimeType: 'application/json',
+  };
 
   // ---- hop 1: no payment yet -------------------------------------------------
   const header = req.headers['x-payment'];
   if (!header) {
     console.log(`402  ${from}->${to} ${amount}`);
-    return send(res, 402, paymentRequiredBody([requirements]));
+    return send(res, 402, paymentRequiredBody([requirements], resourceInfo));
   }
 
   // ---- hop 2: the buyer signed something. Check it, then move money. ---------
@@ -105,13 +152,13 @@ const server = createServer(async (req, res) => {
   try {
     paymentPayload = b64decode(header);
   } catch {
-    return send(res, 402, paymentRequiredBody([requirements], 'X-PAYMENT is not valid base64 JSON'));
+    return send(res, 402, paymentRequiredBody([requirements], resourceInfo, 'X-PAYMENT is not valid base64 JSON'));
   }
 
   const check = await verify({ network: NETWORK, paymentPayload, requirements, apiKey: API_KEY });
   if (!check.isValid) {
     console.log(`402  invalid payment: ${check.invalidReason}`);
-    return send(res, 402, paymentRequiredBody([requirements], check.invalidReason || 'invalid payment'));
+    return send(res, 402, paymentRequiredBody([requirements], resourceInfo, check.invalidReason || 'invalid payment'));
   }
 
   const settlement = await settle({
@@ -123,7 +170,7 @@ const server = createServer(async (req, res) => {
   });
   if (!settlement.success) {
     console.log(`402  settlement failed: ${settlement.errorReason}`);
-    return send(res, 402, paymentRequiredBody([requirements], settlement.errorReason || 'settlement failed'));
+    return send(res, 402, paymentRequiredBody([requirements], resourceInfo, settlement.errorReason || 'settlement failed'));
   }
 
   // ---- hop 3: paid. Serve the thing that was bought. -------------------------
