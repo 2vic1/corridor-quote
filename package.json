@@ -1,0 +1,16 @@
+{
+  "name": "corridor-quote",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A pay-per-call FX quote agent for LatAm corridors, settled in USA₮ over x402 on Celo.",
+  "scripts": {
+    "server": "node src/server.mjs",
+    "buyer": "node src/buyer.mjs",
+    "mock": "node src/mock-facilitator.mjs",
+    "demo": "node src/demo.mjs"
+  },
+  "dependencies": {
+    "viem": "^2.21.0"
+  }
+}
